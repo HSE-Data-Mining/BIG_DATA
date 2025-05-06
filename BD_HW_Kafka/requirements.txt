@@ -1,0 +1,6 @@
+confluent_kafka
+streamlit
+torch==2.0.0
+torchvision==0.15.0
+matplotlib==3.9.4
+pillow

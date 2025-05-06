@@ -1,0 +1,16 @@
+[project]
+name = "MNIST_Class_by_Kafka"
+version = "0.1.0"
+description = "MNIST Classification application with interactive inference by Kafka and Streamlit"
+requires-python = "==3.10"
+dependencies = [
+    "streamlit",
+    "confluent_kafka",
+    "pillow",
+    "torch>=2.0.0",
+    "torchvision==0.15.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
