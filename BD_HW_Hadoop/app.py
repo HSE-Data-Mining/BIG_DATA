@@ -15,9 +15,9 @@ from pyspark.sql import functions as F
 
 OPTIMIZED = sys.argv[1] == "True"
 
-categorical_columns = ["HomePlanet", "CryoSleep", "Destination", "VIP"]
+categorical_columns = ["HomePlanet", "Destination"]
 numeric_columns = ["Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa"]
-remove_columns = ["PassengerId", "Name"]
+remove_columns = ["PassengerId", "Name",  "CryoSleep", "VIP"]
 target_column = "Transported"
 
 conf = SparkConf()
