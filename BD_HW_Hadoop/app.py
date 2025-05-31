@@ -15,9 +15,9 @@ from pyspark.sql import functions as F
 
 OPTIMIZED = sys.argv[1] == "True"
 
-categorical_columns = ["HomePlanet", "Destination"]
+categorical_columns = ["HomePlanet", "CryoSleep", "Destination", "VIP"]
 numeric_columns = ["Age", "RoomService", "FoodCourt", "ShoppingMall", "Spa"]
-remove_columns = ["PassengerId", "Name",  "CryoSleep", "VIP"]
+remove_columns = ["PassengerId", "Name"]
 target_column = "Transported"
 
 conf = SparkConf()
@@ -41,6 +41,9 @@ process = psutil.Process(os.getpid())
 HDFS_PATH = "hdfs:///data/train.csv"
 df = spark.read.csv(HDFS_PATH, header=True, inferSchema=True)
 
+df = df.withColumn(target_column, F.when(F.col(target_column), 1).otherwise(0).cast("integer"))
+
+
 if OPTIMIZED:
     df.cache()
     df = df.repartition(4)
@@ -50,11 +53,13 @@ df = df.drop(*remove_columns)
 for col in categorical_columns:
     df = df.fillna("Unknown", subset=[col])
 
-# Разделение колонки Cabin (по дефолту идет в формате A/0/S, B/1/P и так далее)
+# Split column 'Cabin' (by default in fromat A/0/S, B/1/P and so on)
 df = df.withColumn("Cabin_1", F.split("Cabin", "/")[0]) \
        .withColumn("Cabin_2", F.split("Cabin", "/")[1]) \
        .withColumn("Cabin_3", F.split("Cabin", "/")[2]) \
        .drop("Cabin")
+
+df.printSchema()
 
 categorical_columns.extend(["Cabin_1", "Cabin_2", "Cabin_3"])
 
@@ -68,6 +73,11 @@ indexers = [
     StringIndexer(inputCol=col, outputCol=f"{col}_indexed").setHandleInvalid("keep") 
     for col in categorical_columns
 ]
+
+for col in categorical_columns:
+    if col in df.columns and dict(df.dtypes)[col] == 'boolean':
+        df = df.withColumn(col, F.when(F.col(col).isNull(), "Unknown")
+                              .otherwise(F.when(F.col(col), "True").otherwise("False")))
 
 vector_to_double = F.udf(lambda v: float(v[0]), DoubleType())
 
@@ -133,9 +143,7 @@ crossval = CrossValidator(
 cv_model = crossval.fit(train_df)
 
 best_model = cv_model.bestModel
-
 predictions = best_model.transform(test_df)
-
 auc = evaluator.evaluate(predictions)
 
 evaluator_pr = BinaryClassificationEvaluator(
@@ -152,6 +160,7 @@ if OPTIMIZED:
 total_time = time.time() - start_time
 ram_usage = process.memory_info().rss / (1024 * 1024)
 
+# RESULTS
 print(f"Time: {total_time:.2f} sec, RAM: {ram_usage:.2f} MB")
 print(f"AUC-ROC: {auc:.4f}, AUC-PR: {aupr:.4f}")
 print(f"Best model params: RegParam={best_model.getRegParam()}, ElasticNetParam={best_model.getElasticNetParam()}")
