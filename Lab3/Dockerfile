@@ -1,34 +1,22 @@
-FROM bitnami/spark:3.4.1  
+FROM bitnami/spark:3.5.0
 
 USER root
+RUN apt-get update && apt-get install -y python3-pip curl git
 
-# Установка Python зависимостей
-RUN pip install --no-cache-dir \
-    mlflow==2.9.2 \
-    delta-spark==2.4.0 \
-    pyspark==3.4.1 \
-    pandas \
-    py4j==0.10.9.7 \
-    scikit-learn
+RUN pip3 install delta-spark==3.2.0 scikit-learn psutil tqdm mlflow pandas numpy --no-cache-dir 
 
-# Создаем структуру папок
-RUN mkdir -p /BD_lab_3/data/bronze \
-    /BD_lab_3/data/silver \
-    /BD_lab_3/data/gold \
-    /BD_lab_3/logs \
-    /BD_lab_3/mlruns
+ENV PATH=$PATH:/home/spark/.local/bin
+ENV PYTHONPATH=/app:$PYTHONPATH
 
-WORKDIR /BD_lab_3
+ENV SPARK_HOME=/opt/bitnami/spark/
+RUN export PYSPARK_PYTHON=$(which python3)
+ENV PYSPARK_PYTHON=$PYSPARK_PYTHON
+ENV SPARK_VERSION=3.5
+ENV SPARK_JARS_PACKAGES=io.delta:delta-spark_3.5:3.2.0
 
-# Копируем файлы
-COPY ./src/spark.py /BD_lab_3/src/
-COPY ./src /BD_lab_3/src
-COPY ./data/train.csv /BD_lab_3/data/train.csv
+RUN curl -L -o /opt/bitnami/spark/jars/delta-core_2.12-3.2.0.jar https://repo1.maven.org/maven2/io/delta/delta-core_2.12/3.2.0/delta-core_2.12-3.2.0.jar && \
+    curl -L -o /opt/bitnami/spark/jars/delta-storage-2.2.0.jar https://repo1.maven.org/maven2/io/delta/delta-storage/2.2.0/delta-storage-2.2.0.jar
 
-COPY ./src/run.sh /BD_lab_3/run.sh
-RUN chmod +x /BD_lab_3/run.sh
+RUN mkdir -p /app/{src,data,logs}
 
-ENV SPARK_LOCAL_DIRS=/tmp/spark
-ENV SPARK_WORKER_MEMORY=1g
-
-ENTRYPOINT ["/BD_lab_3/run.sh"]
+WORKDIR /app
