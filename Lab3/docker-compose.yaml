@@ -1,27 +1,24 @@
+version: '3'
+
 services:
   spark:
     build: .
-    container_name: spark
-    ports:
-      - "4040:4040"  
-      - "8080:8080"  
-    volumes:
-      - ./data:/BD_lab_3/data
-      - ./data/train.csv:/BD_lab_3/data/train.csv 
-      - ./src:/BD_lab_3/src
-      - ./logs:/BD_lab_3/logs
     environment:
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
-      - SPARK_HOME=/opt/bitnami/spark
-      - SPARK_DRIVER_MEMORY=1g
-      - SPARK_EXECUTOR_MEMORY=1g
+      - SPARK_MODE=master
+      - SPARK_LOCAL_HOSTNAME=localhost
+    container_name: spark
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./logs:/app/logs
+    ports:
+      - "5000:5000"
+      - "8118:8118"
     networks:
-      - spark-net
-    deploy:
-          resources:
-            limits:
-              memory: 2G
+      - spark-network
+    command: >
+      bash -c "mkdir -p data/{bronze,silver,gold} & mlflow ui --host 0.0.0.0 --port 8118 & python /app/src/app.py & tail -f /dev/null"
+
 networks:
-  spark-net:
+  spark-network:
     driver: bridge
